@@ -7,7 +7,7 @@
 
 include ../common/ppu.mak
 
-DTC=$(PS3DEV)/bin/dtc
+DTC=dtc
 LZMA=lzma
 
 STUB_LDFLAGS := $(LDFLAGS) -Wl,--gc-sections -Wl,-T,uncompress/stub.ld
@@ -35,16 +35,21 @@ FDT_OBJS = $(addprefix libfdt/,\
 CORE_OBJS = main.o debug.o hvcall.o string.o printf.o device.o malloc.o \
 	time.o tftp.o gelic_netif.o exceptions.o exc_vector.o mm.o netrpc.o \
 	cleanup.o devtree.o kernel.o kbootconf.o network.o diskio.o ff.o \
+	inflate.o crc32.o adler32.o inftrees.o zutil.o inffast.o zpipe.o \
 	$(LWIP_OBJS) $(FDT_OBJS)
 
-OBJS = start.o $(CORE_OBJS)
-OBJS_NATIVE = start_native.o $(CORE_OBJS)
+OBJS = start.o $(CORE_OBJS) vmlinux.o
+OBJS_NATIVE = start_native.o $(CORE_OBJS) vmlinux.o
 
 STUB_OBJS = uncompress/stub_start.o uncompress/unlzma.o
 
 all: stage2.bin stage2_native.bin
 
 .PRECIOUS: stage2_raw.bin
+
+vmlinux.o: vmlinux.dat vmlinux.S
+
+vmlinux.bin:
 
 stage2.bin : uncompress/stub.bin stage2_raw.lzma
 	cat uncompress/stub.bin stage2_raw.lzma > $@
@@ -74,7 +79,7 @@ stage2_native.elf: $(OBJS_NATIVE) stage2_native.ld
 
 stage2_raw.elf: $(OBJS) stage2.ld
 	@echo "  LINK      $@"
-	@$(PREFIX)gcc $(LDFLAGS) -Wl,-T,stage2.ld -o $@ $(OBJS)
+	$(PREFIX)gcc $(LDFLAGS) -Wl,-T,stage2.ld -o $@ $(OBJS)
 
 %.S: %.dts
 	@echo "  DTC       $<"

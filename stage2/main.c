@@ -18,6 +18,7 @@ see file COPYING or http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
 #include "cleanup.h"
 #include "kernel.h"
 #include "kbootconf.h"
+#include "zpipe.h"
 
 #include "tftp.h"
 
@@ -37,7 +38,10 @@ extern u64 _thread1_active;
 
 static int boot_entry = 0;
 static void *kernel_buf;
+static u64 kernel_sz;
 static void *initrd_buf;
+
+extern u8 __vmlinux[], __vmlinux_end[1];
 
 #ifdef USE_NETWORK
 enum state_t {
@@ -77,7 +81,7 @@ void seq_tftp_get(const char *name, void *buf, size_t bufsize, enum state_t next
 	tftp_get(tftp, name, buf, bufsize, tftp_cb, NULL);
 }
 
-void sequence(void)
+int sequence(void)
 {
 	switch (gstate) {
 	case STATE_START:
@@ -105,8 +109,9 @@ void sequence(void)
 #endif
 #ifdef AUTO_TFTP
 		if (eth.dhcp->offered_si_addr.addr == 0 || !eth.dhcp->boot_file_name) {
-			printf("Missing boot settings, cannot continue. Rebooting...\n");
-			lv1_panic(1);
+			tftp = tftp_new();
+			printf("Missing boot settings, falling back to embedded kernel...\n");
+			return 1;
 		}
 
 		tftp = tftp_new();
@@ -191,6 +196,8 @@ void sequence(void)
 	case STATE_IDLE:
 		break;
 	}
+
+	return 0;
 }
 #endif
 
@@ -214,6 +221,7 @@ int readfile(char *name, void *buf, u32 maxlen)
 
 int main(void)
 {
+	int res;
 	udelay(2000000);
 	debug_init();
 	printf("\n\nAsbestOS Stage 2 starting.\n");
@@ -231,12 +239,12 @@ int main(void)
 	gstate = STATE_START;
 	while(1) {
 		net_poll();
-		sequence();
+		if(sequence())
+			break;
 	}
 #endif
 #ifdef AUTO_HDD
 	static FATFS fatfs;
-	int res;
 	DSTATUS stat;
 
 	stat = disk_initialize(0);
@@ -258,7 +266,7 @@ int main(void)
 	kbootconf_parse();
 
 	if (conf.num_kernels == 0) {
-		printf("No kernels found in configuration file. Panicking...\n");
+		printf("No kernels found in configuration file. Panicing...\n");
 		lv1_panic(0);
 	}
 
@@ -300,6 +308,24 @@ int main(void)
 	kernel_launch();
 
 #endif
+	printf("Loading embedded kernel...\n");
+	kernel_buf = mm_highmem_freestart();
+	printf("Decompressing kernel to %lX...\n", (u64) kernel_buf);
+	res = unzpipe (kernel_buf, __vmlinux, &kernel_sz);
+	if (res)
+	{
+		printf("Cannot decompress kernel, error %d.\n", res);
+		lv1_panic(1);
+	}
+	printf("Kernel size: %ld\n", kernel_sz);
+	if (kernel_load(kernel_buf, kernel_sz) != 0)
+	{
+		printf("Failed to load embedded kernel. Rebooting...\n");
+		lv1_panic(1);
+	}
+	kernel_build_cmdline("video=ps3fb:mode:2 panic=5", "/dev/sda1");
+	shutdown_and_launch();
+
 	printf("End of main() reached! Rebooting...\n");
 	lv1_panic(1);
 	return 0;

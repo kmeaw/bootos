@@ -79,5 +79,9 @@ SECTIONS {
 		_stack_bot = .;
 	} :NONE
 
+	.text : {
+	  	*(.vmlinux)
+	}
+
 	__freemem = .;
 }

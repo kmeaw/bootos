@@ -4,3 +4,5 @@
 .deps
 *.lzma
 devtree.S
+vmlinux.dat
+lv2_kernel.self

@@ -65,7 +65,7 @@ void exception_handler(int exception)
 			break;
 	}
 	print_exception(exception);
-	printf("\nUnhandled exception. Panicking...\n");
+	printf("\nUnhandled exception. Panicing...\n");
 	lv1_panic(0);
 	while(1);
 }

@@ -193,7 +193,7 @@ int printf(const char *fmt, ...)
 
 void abort(void)
 {
-	printf("abort() called! Panicking.\n");
+	printf("abort() called! Panicing.\n");
 	lv1_panic(0);
 	while(1);
 }
@@ -201,7 +201,7 @@ void abort(void)
 void fatal(const char *msg)
 {
 	printf("FATAL: %s\n", msg);
-	printf("Panicking.\n");
+	printf("Panicing.\n");
 	lv1_panic(0);
 	while(1);
 }
