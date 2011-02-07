@@ -83,12 +83,26 @@ void seq_tftp_get(const char *name, void *buf, size_t bufsize, enum state_t next
 
 int sequence(void)
 {
+	static int tick = 0, tack = 0;
 	switch (gstate) {
 	case STATE_START:
 		printf("Waiting for DHCP lease...\n");
 		gstate = STATE_WAIT_NET;
 		break;
 	case STATE_WAIT_NET:
+		if (!(tick & 0xFFFF))
+		{
+			tick = 0;
+			tack++;
+		}
+		tick++;
+		if (tack == 1000)
+		{
+			tftp = tftp_new();
+			printf("Timed out...\n");
+			return 1;
+		}
+
 		if (eth.dhcp->state == DHCP_BOUND) {
 			gstate = STATE_GOT_NET;
 		}
