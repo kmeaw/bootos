@@ -183,3 +183,10 @@ anything.
 
 Storage support (Flash and HDD) needs looking into.
 
+== Embedded kernel support ==
+
+If DHCP server does not reply in a reasonable time, AsbestOS will boot a kernel,
+that is embedded into the binary. To use this feature, compile the kernel,
+compress it (using zpipe from zlib source code) and copy to $ASBESTOS_SRC/stage2
+under the name "vmlinux.dat".
+
