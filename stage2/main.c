@@ -337,7 +337,7 @@ int main(void)
 		printf("Failed to load embedded kernel. Rebooting...\n");
 		lv1_panic(1);
 	}
-	kernel_build_cmdline("video=ps3fb:mode:3 panic=5", "/dev/sda1");
+	kernel_build_cmdline("video=ps3fb:mode:0 panic=5", "/dev/sda1");
 	shutdown_and_launch();
 
 	printf("End of main() reached! Rebooting...\n");
