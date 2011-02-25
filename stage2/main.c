@@ -238,7 +238,7 @@ int main(void)
 	int res;
 	udelay(2000000);
 	debug_init();
-	printf("\n\nAsbestOS Stage 2 starting.\n");
+	printf("\n\nBootOS Stage 2 starting.\n");
 	printf("Waiting for thread 1...\n");
 	while(!_thread1_active);
 	printf("Thread 1 is alive, all systems go.\n");
