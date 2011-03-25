@@ -1,0 +1,70 @@
+So, the boot sequence is:
+- default.spp and lv1 are read from the flash into memory;
+- lv1 reads default.spp and gets PS3 LPAR configuration;
+- lv1 reads lv2 SELF binary and sets up the LPAR, specified in 
+  the configuration data;
+- lv2 SELF is decrypted (and unpacked if it is compressed) and gets
+  executed;
+- you get into XMB and start lv2patcher, then select "Linux";
+- lv2 patcher modifies default.spp in the ram, replacing original
+  SELF path (/flh/os/lv2_kernel.self) to another 
+  (/local_sys0/lv2_kernel.self);
+- lv2 patcher modifies lv2 syscall entry to make it execute syscall 255
+  of lv1 (lv1_panic), then it calls that lv2 syscall (effecively rebooting
+  the PS3);
+- lv1 reads default.spp and gets (modified) PS3 LPAR configuration;
+- lv1 reads lv2 SELF binary (BootOS) and sets up the LPAR, specified
+  in the (modified, bootmem=128M) configuration data;
+- lv2 SELF is decrypted (now it is not compressed) and gets executed;
+- BootOS sets up a few devices (most notably gelic for network debugging);
+- BootOS tries to get a DHCP lease for some time;
+- BootOS tries to get the kernel from TFTP server if is specified by the
+  DHCP configuration;
+- If getting a DHCP lease has failed or DHCP server hasn't provided a
+  TFTP filename, then it decompresses and boots it;
+- If any of above has failed, then PS3 is shut down (if lv2 hasn't loaded)
+  or rebooted (if lv2 has loaded).
+
+If you are using my kernel image, then:
+- kernel finds out that it has an embedded initramfs image, mounts it
+  and executes the /init script;
+- init script starts up the network, telnet server and gamepad drivers;
+- init script mounts PS3 GameOS partition, sets up the console font and
+  launches the bootloader script;
+- bootloader script tries to mount everything it can every 2 seconds;
+- it looks for kboot.conf on each mounted device;
+- kboot.conf files are concatenated and the result is used to generate
+  the menu;
+- you see the menu and select a kernel image;
+- bootloader script copies the image to /tmp, unmounts everything,
+  stops the USB controller drivers and kboots to that kernel.
+
+kboot.conf consists of lines. Each line is either:
+- a comment (starts with "--" or "#") or an empty line;
+  such lines are just ignored;
+- a line which has a label and a value in label=value format;
+  a menu entry is created with the specified label and it
+  corresponds to the specified value.
+
+Two labels have a special meaning: "timeout" and "vmode". They
+are not added into the menu, instead they change the timeout and vmode.
+
+For all other labels, value contains one or more space-separated words.
+The first word is the kernel image path. It can either be a file path
+or a URL (which should begin with "http"). If it is a URL, then it will
+be passed to "wget" program to download the image before it can be executed.
+The file path is relative to the mount point root. If the kernel name ends
+with ".sh", then it won't be passed to kboot - instead it would be executed
+as a shell script. If the kernel name ends with "linux.img", then the
+bootloader script would attempt to mount it as a loop device, containing an
+ext4 filesystem and run /sbin/init from it.
+
+The second and all following words are parsed as parameter=value pairs for
+a initrd= parameter. Everything else just gets to the kernel cmdline.
+If initrd is specified, then similar rules are applied to it - it can be
+located on a local storage or on an HTTP-server.
+
+If you press 'q' while running the bootloader script, then it will terminate
+and drop you into a rescue shell. Also remember that you have a telnet
+server running. Pressing any key would stop the auto-boot timer.
+
